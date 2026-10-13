@@ -55,38 +55,111 @@
 
 ## System Architecture
 
+Hệ thống **TMed-QA** vận hành theo kiến trúc đa tầng (Multi-tier Architecture) tích hợp quy trình đồ thị trạng thái **LangGraph Agentic Corrective RAG (CRAG)**, kết hợp giữa kho dữ liệu giáo trình Y học Cổ truyền được vector hóa và cơ chế tự sửa sai (Self-Correction) thông qua tìm kiếm bổ trợ thời gian thực:
+
 ```mermaid
 flowchart TD
-    %% User & Gateway
-    User(["Bệnh nhân / Bác sĩ"]) --> WebUI["Giao diện TMed-QA Web / Gradio"]
-    WebUI --> API["FastAPI Web Server /api/chat"]
+    %% SUBGRAPH 1: INGESTION PIPELINE
+    subgraph INGEST ["1. Knowledge Ingestion & Vector Indexing (Kho Tri thức YHCT)"]
+        direction TB
+        Docs["4 Giáo trình YHCT Chuẩn Bộ Y tế (Nội khoa, Ngũ quan, Nhi khoa, Toàn thư)"]
+        Uploads["Tài liệu Bổ sung Người dùng Tải lên (.docx, .txt, .md)"]
+        
+        Parser["Document Loaders & Text Normalizer (python-docx, UTF-8 NFKC)"]
+        Splitter["Hierarchical Medical Splitter (Chương → Tiết → Bệnh chứng)"]
+        EmbedModel["Embedding Engine: keepitreal/vietnamese-sbert (768 dimensions)"]
+        VStore[("Persistent ChromaDB Vector Store (Collection: yhct_corpus)")]
 
-    %% LangGraph CRAG Graph
-    subgraph CRAG ["Quy trình đồ thị Agentic Corrective RAG (LangGraph)"]
-        API --> RET["1. Retrieve Documents: vietnamese-sbert / ChromaDB"]
-        RET --> GRD{"2. Document Grader Node: LLM / Heuristic Filter"}
-        
-        GRD -- "Đủ minh chứng phù hợp" --> GEN["4. Medical Generator: Groq / Gemini"]
-        GRD -- "Thiếu hoặc sai lệch" --> REW["3. Query Rewriter: LLM Optimizer"]
-        
-        REW --> WEB["Web Search Fallback: DuckDuckGo API"]
-        WEB --> GEN
-        
-        GEN --> CIT["Citation & Source Grounding Processor"]
+        Docs --> Parser
+        Uploads --> Parser
+        Parser --> Splitter
+        Splitter -->|"2.980 text chunks"| EmbedModel
+        EmbedModel -->|"Dense Vectors"| VStore
     end
 
-    %% Response
-    CIT --> Resp(["Phản hồi Y khoa kèm Trích dẫn số #91;1#93;, #91;2#93;"])
-    Resp --> WebUI
+    %% SUBGRAPH 2: CLIENT & GATEWAY
+    subgraph GATEWAY ["2. Client Interaction & API Gateway Layer"]
+        direction TB
+        User(["Bác sĩ / Bệnh nhân / Chuyên gia Y tế"])
+        WebUI["Giao diện TMed-QA Clinical Web SPA (Vanilla JS/CSS, Vector Icons)"]
+        API["FastAPI Web Server Endpoint (POST /api/chat)"]
+        StateInit["Khởi tạo LangGraph State: {question, documents, web_search_needed}"]
 
-    %% Styling
+        User -->|"Nhập câu hỏi lâm sàng YHCT"| WebUI
+        WebUI -->|"JSON Payload: {message, history}"| API
+        API --> StateInit
+    end
+
+    %% SUBGRAPH 3: LANGGRAPH AGENTIC CRAG PIPELINE
+    subgraph CRAG ["3. LangGraph Agentic Corrective RAG Workflow (StateGraph)"]
+        direction TB
+        
+        %% Node 1: Retrieve
+        NodeRetrieve["Node: retrieve_docs - Truy xuất Top-4 Chunks (Similarity Threshold >= 0.5)"]
+        VStore -.->|"Dense Vector Search"| NodeRetrieve
+        StateInit --> NodeRetrieve
+
+        %% Node 2: Grade Docs
+        NodeGrade["Node: grade_docs - Đánh giá Minh chứng với LLM-as-a-Judge"]
+        NodeRetrieve -->|"Danh sách 4 chunks"| NodeGrade
+
+        %% Conditional Edge: Router
+        DecisionRoute{"Conditional Edge: route - Đủ thông tin trả lời?"}
+        NodeGrade -->|"Cập nhật web_search_needed: Yes / No"| DecisionRoute
+
+        %% Corrective Branch: Query Rewrite & Web Search
+        NodeRewrite["Node: rewrite_query - Tối ưu hóa Từ khóa (Giữ nguyên thuật ngữ có dấu)"]
+        NodeWebSearch["Node: web_search - Tìm kiếm Internet Bổ trợ (DuckDuckGo API Top-3)"]
+        
+        DecisionRoute -->|"Thiếu hoặc sai lệch minh chứng (Yes)"| NodeRewrite
+        NodeRewrite --> NodeWebSearch
+
+        %% Node 4: Answer Generation
+        NodeGen["Node: generate_answer - LLM Medical Generator (Groq Qwen 2.5 / Gemini)"]
+        
+        DecisionRoute -->|"Đủ minh chứng phù hợp (No)"| NodeGen
+        NodeWebSearch -->|"Hợp nhất web context"| NodeGen
+
+        %% Safeguard Fallback
+        Fallback["Fallback Safeguard: _fallback_answer - Trích xuất từ khóa khi LLM gặp sự cố"]
+        NodeGen -.->|"Khi LLM API quá tải hoặc lỗi"| Fallback
+    end
+
+    %% SUBGRAPH 4: POST-PROCESSING & DELIVERY
+    subgraph OUTPUT ["4. Evidence Grounding & Presentation Layer"]
+        direction TB
+        PostProc["Citation & Source Grounding (Gán nhãn trích dẫn số #91;1#93;, #91;2#93;)"]
+        Disclaimer["Medical Safety Wrapper (Khuyến cáo an toàn y khoa bắt buộc)"]
+        RespPayload["FastAPI Response Payload: {answer, sources, elapsed, status}"]
+        Inspector["Live Evidence Inspector Panel (Slide-over xem chi tiết văn bản gốc)"]
+        ChatStream["Cửa sổ Chat Lâm sàng (Định dạng Markdown + Huy hiệu trích dẫn)"]
+
+        NodeGen --> PostProc
+        Fallback --> PostProc
+        PostProc --> Disclaimer
+        Disclaimer --> RespPayload
+        RespPayload --> WebUI
+        WebUI --> ChatStream
+        WebUI --> Inspector
+    end
+
+    %% STYLING
     classDef startend fill:#1a73e8,stroke:#1557b0,stroke-width:2px,color:#fff,font-weight:bold;
     classDef process fill:#f8fafd,stroke:#cbd5e1,stroke-width:1.5px,color:#0f172a;
-    classDef branch fill:#fef3c7,stroke:#f59e0b,stroke-width:2px,color:#854d0e;
-    
-    class User,Resp startend;
-    class WebUI,API,RET,REW,WEB,GEN,CIT process;
-    class GRD branch;
+    classDef decision fill:#fef3c7,stroke:#f59e0b,stroke-width:2px,color:#854d0e,font-weight:bold;
+    classDef corrective fill:#fee2e2,stroke:#ef4444,stroke-width:1.5px,color:#991b1b;
+    classDef generator fill:#ecfdf5,stroke:#10b981,stroke-width:2px,color:#065f46,font-weight:bold;
+    classDef database fill:#eff6ff,stroke:#3b82f6,stroke-width:1.5px,color:#1e40af;
+    classDef fallback fill:#f1f5f9,stroke:#94a3b8,stroke-width:1.5px,stroke-dasharray: 5 5,color:#475569;
+
+    class User startend;
+    class Docs,Uploads,Parser,Splitter,EmbedModel,WebUI,API,StateInit,PostProc,Disclaimer,RespPayload,Inspector,ChatStream process;
+    class VStore database;
+    class NodeRetrieve,NodeGrade process;
+    class DecisionRoute decision;
+    class NodeRewrite,NodeWebSearch corrective;
+    class NodeGen generator;
+    class Fallback fallback;
 ```
 
 ---
