@@ -58,25 +58,25 @@
 ```mermaid
 flowchart TD
     %% User & Gateway
-    User([Bệnh nhân / Bác sĩ]) --> WebUI[Giao diện TMed-QA Web / Gradio]
-    WebUI --> API[FastAPI Web Server /api/chat]
+    User(["Bệnh nhân / Bác sĩ"]) --> WebUI["Giao diện TMed-QA Web / Gradio"]
+    WebUI --> API["FastAPI Web Server /api/chat"]
 
     %% LangGraph CRAG Graph
     subgraph CRAG ["Quy trình đồ thị Agentic Corrective RAG (LangGraph)"]
-        API --> RET[1. Retrieve Documents: vietnamese-sbert / ChromaDB]
-        RET --> GRD{2. Document Grader Node: LLM/Heuristic Filter}
+        API --> RET["1. Retrieve Documents: vietnamese-sbert / ChromaDB"]
+        RET --> GRD{"2. Document Grader Node: LLM / Heuristic Filter"}
         
-        GRD -- "Đủ minh chứng phù hợp" --> GEN[4. Medical Generator: Groq / Gemini]
-        GRD -- "Thiếu hoặc sai lệch" --> REW[3. Query Rewriter: LLM Optimizer]
+        GRD -- "Đủ minh chứng phù hợp" --> GEN["4. Medical Generator: Groq / Gemini"]
+        GRD -- "Thiếu hoặc sai lệch" --> REW["3. Query Rewriter: LLM Optimizer"]
         
-        REW --> WEB[Web Search Fallback: DuckDuckGo API]
+        REW --> WEB["Web Search Fallback: DuckDuckGo API"]
         WEB --> GEN
         
-        GEN --> CIT[Citation & Source Grounding Processor]
+        GEN --> CIT["Citation & Source Grounding Processor"]
     end
 
     %% Response
-    CIT --> Resp([Phản hồi Y khoa kèm Trích dẫn số [1], [2]])
+    CIT --> Resp(["Phản hồi Y khoa kèm Trích dẫn số #91;1#93;, #91;2#93;"])
     Resp --> WebUI
 
     %% Styling
