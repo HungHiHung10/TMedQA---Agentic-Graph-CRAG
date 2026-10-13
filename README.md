@@ -139,7 +139,7 @@ a:/TMed-QA/
 ### 2. Environment Setup
 ```bash
 # Clone the repository
-git clone https://github.com/your-username/TMed-QA.git
+git clone https://github.com/HungHiHung10/TMedQA---Agentic-Graph-CRAG.git
 cd TMed-QA
 
 # Create and activate virtual environment
