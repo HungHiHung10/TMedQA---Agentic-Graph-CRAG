@@ -12,13 +12,13 @@ from langchain_core.tools import Tool
 from modules.settings import RERANKER_MODEL_NAME
 
 
-def _is_feature_enabled(name: str, default: str = "false") -> bool:
+def _enabled(name: str, default: str = "false") -> bool:
     return os.getenv(name, default).strip().lower() in {"1", "true", "yes", "on"}
 
 
 @lru_cache(maxsize=1)
-def get_cross_encoder_reranker():
-    if not _is_feature_enabled("RERANKER_ENABLED"):
+def get_reranker():
+    if not _enabled("RERANKER_ENABLED"):
         print("[INFO] Re-ranker disabled. Set RERANKER_ENABLED=true to use it.")
         return None
 
@@ -36,8 +36,8 @@ def get_cross_encoder_reranker():
         return None
 
 
-def score_with_cross_encoder(question: str, document: str):
-    reranker = get_cross_encoder_reranker()
+def rerank_score(question: str, document: str):
+    reranker = get_reranker()
     if reranker is None:
         return None
 
@@ -49,7 +49,7 @@ def score_with_cross_encoder(question: str, document: str):
 
 
 # --- CHAINS ---
-def build_relevance_grader(llm):
+def build_grader(llm):
     def parse_relevance_decision(text: str):
         return {"binary_score": "yes" if "yes" in text.lower() else "no"}
 
@@ -71,7 +71,7 @@ Return only one word: yes or no.
     return prompt | llm | StrOutputParser() | parse_relevance_decision
 
 
-def build_query_rewriter(llm):
+def build_rewriter(llm):
     sys_prompt = """
 Rewrite the user question into a concise search query.
 Preserve Vietnamese medical terms exactly when present, including accents.
@@ -84,7 +84,7 @@ Do not translate the key term. Return only the rewritten query.
     return prompt | llm | StrOutputParser()
 
 
-def build_answer_generator(llm):
+def build_generator(llm):
     prompt_text = """
 You are a precise Vietnamese traditional medicine (YHCT) question-answering assistant.
 Use only the provided Context. Do not use outside knowledge.
@@ -108,9 +108,9 @@ Answer:
 """
     prompt = ChatPromptTemplate.from_template(prompt_text)
 
-    def format_retrieved_context(docs):
+    def format_context(docs):
         formatted = []
-        for index, doc in enumerate(docs or [], start=1):
+        for index, doc in enumerate((docs or [])[:3], start=1):
             metadata = getattr(doc, "metadata", {}) or {}
             source = metadata.get("source") or metadata.get("title") or metadata.get("disease") or "unknown source"
             section = metadata.get("section") or metadata.get("title") or ""
@@ -121,20 +121,26 @@ Answer:
         return "\n\n".join(formatted)
 
     return (
-        {"context": (itemgetter("context") | RunnableLambda(format_retrieved_context)), "question": itemgetter("question")}
+        {"context": (itemgetter("context") | RunnableLambda(format_context)), "question": itemgetter("question")}
         | prompt | llm | StrOutputParser()
     )
 
 # --- TOOLS ---
-def build_duckduckgo_search_tool():
+def build_search_tool():
     ddg_search = DuckDuckGoSearchResults(backend="api", num_results=3)
     return Tool(name="web_search", func=ddg_search.invoke, description="Search internet")
 
 # Backward-compatible names for older imports.
-_flag_enabled = _is_feature_enabled
-get_reranker_model = get_cross_encoder_reranker
-get_rerank_score = score_with_cross_encoder
-build_grader_chain = build_relevance_grader
-build_rewriter_chain = build_query_rewriter
-build_generator_chain = build_answer_generator
-build_web_search_tool = build_duckduckgo_search_tool
+_flag_enabled = _enabled
+get_cross_encoder_reranker = get_reranker
+get_reranker_model = get_reranker
+score_with_cross_encoder = rerank_score
+get_rerank_score = rerank_score
+build_relevance_grader = build_grader
+build_grader_chain = build_grader
+build_query_rewriter = build_rewriter
+build_rewriter_chain = build_rewriter
+build_answer_generator = build_generator
+build_generator_chain = build_generator
+build_duckduckgo_search_tool = build_search_tool
+build_web_search_tool = build_search_tool

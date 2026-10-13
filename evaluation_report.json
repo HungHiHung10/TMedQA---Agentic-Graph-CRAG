@@ -1,0 +1,81 @@
+[
+  {
+    "id": "MED-01",
+    "category": "Nam khoa / Nội khoa",
+    "question": "Liệt dương là gì và nguyên nhân chủ yếu theo Y học cổ truyền?",
+    "rag_latency_s": 10.93,
+    "sources_count": 4,
+    "score_faithfulness": 1,
+    "score_relevance": 1,
+    "score_correctness": 1,
+    "generated_answer_snippet": "Tài liệu hiện tại không chứa đủ thông tin chính xác để trả lời câu hỏi này.\n\n---\nLưu ý: Câu trả lời chỉ dùng để tham khảo từ tài liệu đã nạp, không thay thế chẩn đoán hoặc điều trị của nhân viên y tế.\n\nNguồn:\n[1] Noi Khoa Y Hoc Co Truyen - TẠO MÁU CỦA TUỶ XƯƠNG (Dẫn nhập)\n[2] Benh Ngu Quan YHCT - In...",
+    "sources": [
+      "Noi Khoa Y Hoc Co Truyen",
+      "Benh Ngu Quan YHCT",
+      "nhi-khoa-y-hoc-co-truyen",
+      "duckduckgo_search"
+    ]
+  },
+  {
+    "id": "MED-02",
+    "category": "Ngoại cảm / Thời bệnh",
+    "question": "Triệu chứng và phép trị bệnh Trúng thử theo Đông y?",
+    "rag_latency_s": 4.97,
+    "sources_count": 4,
+    "score_faithfulness": 5,
+    "score_relevance": 1,
+    "score_correctness": 1,
+    "generated_answer_snippet": "Tai lieu hien tai khong chua du thong tin chinh xac de tra loi cau hoi nay.\n\n---\nLưu ý: Câu trả lời chỉ dùng để tham khảo từ tài liệu đã nạp, không thay thế chẩn đoán hoặc điều trị của nhân viên y tế.\n\nNguồn:\n[1] Noi Khoa YHCT - GS Hoang Bao Chau - LỜI NÓI ĐẦU\n[2] Noi Khoa Y Hoc Co Truyen - HYSTERIA...",
+    "sources": [
+      "Noi Khoa YHCT - GS Hoang Bao Chau",
+      "Noi Khoa Y Hoc Co Truyen",
+      "Benh Ngu Quan YHCT",
+      "duckduckgo_search"
+    ]
+  },
+  {
+    "id": "MED-03",
+    "category": "Nhi khoa YHCT",
+    "question": "Đặc điểm sinh lý và bệnh lý tạng phủ ở trẻ em trong Nhi khoa YHCT?",
+    "rag_latency_s": 27.13,
+    "sources_count": 1,
+    "score_faithfulness": 5,
+    "score_relevance": 5,
+    "score_correctness": 2,
+    "generated_answer_snippet": "Dựa vào tài liệu [1], đặc điểm sinh lý và bệnh lý tạng phủ ở trẻ em trong Nhi khoa YHCT được tóm tắt như sau:\n\n**1. Đặc điểm sinh lý (Cơ thể non nớt, \"trĩ âm trĩ dương\"):**\n*   **Khí huyết chưa đầy đủ:** Mạch chẩn không cần thiết cho lắm.\n*   **Thần thức chưa khai thông:** Trẻ chưa biết nói.\n*   **T...",
+    "sources": [
+      "nhi-khoa-y-hoc-co-truyen"
+    ]
+  },
+  {
+    "id": "MED-04",
+    "category": "Ngũ quan YHCT",
+    "question": "Các thể lâm sàng và bài thuốc chữa bệnh Viêm kết mạc theo YHCT?",
+    "rag_latency_s": 19.24,
+    "sources_count": 1,
+    "score_faithfulness": 5,
+    "score_relevance": 4,
+    "score_correctness": 1,
+    "generated_answer_snippet": "Theo YHCT, bệnh Viêm kết mạc (Phong huyễn xích lạn) có các thể lâm sàng và bài thuốc chữa như sau:\n\n**Chứng trạng:**\nRìa ngoài mi mắt đỏ, loét chảy nước mắt, nhiều ghèn đau ngứa nhặm, sợ ánh sáng [1].\n\n**Bài thuốc chữa:**\n*   **Thuốc uống:** Nên dùng bài Xuyên khung trà điều tán (2) hoặc bài Tam hoà...",
+    "sources": [
+      "Benh Ngu Quan YHCT"
+    ]
+  },
+  {
+    "id": "MED-05",
+    "category": "Phế hệ / Hô hấp",
+    "question": "Phép trị và bài thuốc điều trị Hen phế quản thể Hàn theo Y học cổ truyền?",
+    "rag_latency_s": 23.77,
+    "sources_count": 4,
+    "score_faithfulness": 5,
+    "score_relevance": 2,
+    "score_correctness": 1,
+    "generated_answer_snippet": "Dựa trên các triệu chứng của \"Phế hư\" trong bối cảnh hen phế quản, đặc biệt là các dấu hiệu như sợ lạnh, tự ra mồ hôi, ngạt mũi chảy nước mũi, mạch nhu hoãn vô lực, có thể đối chứng với thể Hàn.\n\n**Phép trị:** Bổ phế cố biểu, ích khí định suyễn [1].\n\n**Bài thuốc:**\n*   **Bài 1: Ngọc bình phong tán g...",
+    "sources": [
+      "Noi Khoa Y Hoc Co Truyen",
+      "Benh Ngu Quan YHCT",
+      "nhi-khoa-y-hoc-co-truyen",
+      "duckduckgo_search"
+    ]
+  }
+]

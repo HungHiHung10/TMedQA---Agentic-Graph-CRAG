@@ -4,13 +4,13 @@ import shutil
 from langchain_chroma import Chroma
 
 from modules.settings import CHROMA_DB_DIR
-from modules.ingestion.sources import split_uploaded_sources
+from modules.ingestion.sources import split_uploads
 from modules.ingestion.splitters import (
-    split_builtin_source_with_fallback,
-    split_benh_ngu_quan,
+    split_source,
+    split_ngu_quan,
     split_nhi_khoa,
-    split_noi_khoa_general,
-    split_noi_khoa_gs_chau,
+    split_noi_khoa,
+    split_gs_chau,
 )
 from modules.retrieval.retriever import InMemoryVectorStore
 
@@ -37,19 +37,19 @@ def create_vector_store(embedding_model, force_rebuild=False):
             print(f"[WARNING] Could not remove old Chroma directory: {exc}")
 
     splitters = [
-        ("noi_khoa_gs_chau", "Noi_Khoa_YHCT_GS_Hoang_Bao_Chau", split_noi_khoa_gs_chau),
-        ("benh_ngu_quan", "Benh_Ngu_Quan_YHCT", split_benh_ngu_quan),
+        ("noi_khoa_gs_chau", "Noi_Khoa_YHCT_GS_Hoang_Bao_Chau", split_gs_chau),
+        ("benh_ngu_quan", "Benh_Ngu_Quan_YHCT", split_ngu_quan),
         ("nhi_khoa", "Nhi_Khoa_YHCT", split_nhi_khoa),
-        ("noi_khoa_general", "noi-khoa-y-hoc-co-truyen", split_noi_khoa_general),
+        ("noi_khoa_general", "noi-khoa-y-hoc-co-truyen", split_noi_khoa),
     ]
 
     all_chunks = []
     for file_key, source_id, splitter in splitters:
-        docs = split_builtin_source_with_fallback(file_key, source_id, splitter)
+        docs = split_source(file_key, source_id, splitter)
         print(f"[INFO] {source_id}: {len(docs)} chunks")
         all_chunks.extend(docs)
 
-    user_chunks = split_uploaded_sources()
+    user_chunks = split_uploads()
     all_chunks.extend(user_chunks)
 
     if not all_chunks:

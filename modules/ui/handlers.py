@@ -7,14 +7,14 @@ import gradio as gr
 
 from modules.ingestion.sources import (
     SUPPORTED_USER_SOURCE_EXTS,
-    list_available_sources,
-    list_deleted_uploaded_sources,
-    list_uploaded_source_names,
-    mark_uploaded_source_deleted,
-    restore_uploaded_source,
-    sanitize_uploaded_filename,
+    list_sources,
+    deleted_sources,
+    uploaded_names,
+    mark_deleted,
+    restore_source,
+    safe_filename,
 )
-from modules.rag.service import answer_question_with_workflow, clear_cached_retriever, rebuild_vector_store
+from modules.rag.service import answer_question as run_question, clear_retriever, rebuild_store
 from modules.settings import USER_SOURCES_DIR
 from modules.ui.formatting import finalize_answer, format_retrieved_sources
 
@@ -29,9 +29,9 @@ WELCOME_MESSAGES = [
 ]
 
 
-def build_source_inventory_rows() -> List[List[str]]:
+def source_rows() -> List[List[str]]:
     rows = []
-    for index, item in enumerate(list_available_sources(), start=1):
+    for index, item in enumerate(list_sources(), start=1):
         rows.append([
             str(index),
             item["kind"],
@@ -42,30 +42,30 @@ def build_source_inventory_rows() -> List[List[str]]:
     return rows
 
 
-def refresh_uploaded_source_dropdown():
-    return gr.update(choices=list_uploaded_source_names(), value=None)
+def source_choices():
+    return gr.update(choices=uploaded_names(), value=None)
 
 
-def refresh_source_inventory():
-    return build_source_inventory_rows(), "Source list refreshed.", refresh_uploaded_source_dropdown()
+def refresh_sources():
+    return source_rows(), "Source list refreshed.", source_choices()
 
 
-def resolve_uploaded_temp_path(file_obj: Any) -> str:
+def upload_path(file_obj: Any) -> str:
     if isinstance(file_obj, (str, os.PathLike)):
         return str(file_obj)
     return str(getattr(file_obj, "name", ""))
 
 
-def save_uploaded_sources(files: List[Any]):
+def save_sources(files: List[Any]):
     if not files:
-        return build_source_inventory_rows(), "Choose one or more .docx, .txt, or .md files first.", refresh_uploaded_source_dropdown()
+        return source_rows(), "Choose one or more .docx, .txt, or .md files first.", source_choices()
 
     USER_SOURCES_DIR.mkdir(parents=True, exist_ok=True)
     saved = []
     skipped = []
 
     for file_obj in files:
-        source_path = resolve_uploaded_temp_path(file_obj)
+        source_path = upload_path(file_obj)
         if not source_path or not os.path.exists(source_path):
             skipped.append("<missing temporary file>")
             continue
@@ -75,18 +75,18 @@ def save_uploaded_sources(files: List[Any]):
             skipped.append(Path(source_path).name)
             continue
 
-        filename = sanitize_uploaded_filename(source_path)
+        filename = safe_filename(source_path)
         target = USER_SOURCES_DIR / filename
         counter = 1
-        while target.exists() and target.name not in list_deleted_uploaded_sources():
+        while target.exists() and target.name not in deleted_sources():
             target = USER_SOURCES_DIR / f"{target.stem}_{counter}{target.suffix}"
             counter += 1
 
         shutil.copy2(source_path, target)
-        restore_uploaded_source(target.name)
+        restore_source(target.name)
         saved.append(target.name)
 
-    clear_cached_retriever()
+    clear_retriever()
     parts = []
     if saved:
         parts.append(f"Uploaded {len(saved)} file(s): " + ", ".join(saved))
@@ -94,13 +94,13 @@ def save_uploaded_sources(files: List[Any]):
     if skipped:
         parts.append("Skipped unsupported/missing file(s): " + ", ".join(skipped))
 
-    return build_source_inventory_rows(), " | ".join(parts) if parts else "No files were uploaded.", refresh_uploaded_source_dropdown()
+    return source_rows(), " | ".join(parts) if parts else "No files were uploaded.", source_choices()
 
 
-def delete_uploaded_source_file(filename: str):
+def delete_source(filename: str):
     filename = (filename or "").strip()
     if not filename:
-        return build_source_inventory_rows(), "Choose an uploaded source to delete.", refresh_uploaded_source_dropdown()
+        return source_rows(), "Choose an uploaded source to delete.", source_choices()
 
     safe_name = Path(filename).name
     target = USER_SOURCES_DIR / safe_name
@@ -112,46 +112,46 @@ def delete_uploaded_source_file(filename: str):
         if target_path.suffix.lower() not in SUPPORTED_USER_SOURCE_EXTS:
             raise ValueError("Only uploaded .docx, .txt, and .md files can be deleted.")
         if not target_path.exists():
-            return build_source_inventory_rows(), f"Uploaded source not found: {safe_name}", refresh_uploaded_source_dropdown()
+            return source_rows(), f"Uploaded source not found: {safe_name}", source_choices()
 
         target_path.unlink()
-        clear_cached_retriever()
+        clear_retriever()
         return (
-            build_source_inventory_rows(),
+            source_rows(),
             f"Deleted uploaded source: {safe_name}. Retriever cache cleared.",
-            refresh_uploaded_source_dropdown(),
+            source_choices(),
         )
     except Exception as exc:
-        mark_uploaded_source_deleted(safe_name)
-        clear_cached_retriever()
+        mark_deleted(safe_name)
+        clear_retriever()
         return (
-            build_source_inventory_rows(),
+            source_rows(),
             f"Removed uploaded source from active index: {safe_name}. Physical delete was blocked by Windows: {exc}",
-            refresh_uploaded_source_dropdown(),
+            source_choices(),
         )
 
 
-def rebuild_vector_store_for_chat():
+def rebuild_chat():
     try:
-        return rebuild_vector_store()
+        return rebuild_store()
     except Exception as exc:
         return f"Rebuild failed: {exc}"
 
 
-def rebuild_vector_store_for_sources():
+def rebuild_sources():
     try:
-        return build_source_inventory_rows(), rebuild_vector_store(), refresh_uploaded_source_dropdown()
+        return source_rows(), rebuild_store(), source_choices()
     except Exception as exc:
-        return build_source_inventory_rows(), f"Rebuild failed: {exc}", refresh_uploaded_source_dropdown()
+        return source_rows(), f"Rebuild failed: {exc}", source_choices()
 
 
-def answer_user_question(question: str):
+def ask_question(question: str):
     question = (question or "").strip()
     if not question:
         return "", [], "Enter a question to run the demo."
 
     try:
-        result, elapsed = answer_question_with_workflow(question)
+        result, elapsed = run_question(question)
     except Exception as exc:
         return "", [], f"Error: {exc}"
 
@@ -161,31 +161,42 @@ def answer_user_question(question: str):
     return answer, format_retrieved_sources(documents), status
 
 
-def submit_chat_message(message: str, history: List[Dict[str, str]]):
+def submit_message(message: str, history: List[Dict[str, str]]):
     message = (message or "").strip()
     history = list(history or WELCOME_MESSAGES)
     if not message:
         return history, "", [], "Enter a question to continue."
 
     history.append({"role": "user", "content": message})
-    answer, sources, status = answer_user_question(message)
+    answer, sources, status = ask_question(message)
     history.append({"role": "assistant", "content": answer or status})
     return history, "", sources, status
 
 
-def reset_chat_session():
+def reset_chat():
     return list(WELCOME_MESSAGES), "", [], "Ready."
 
 
 # Backward-compatible names for older UI wiring.
-available_source_rows = build_source_inventory_rows
-uploaded_source_dropdown_update = refresh_uploaded_source_dropdown
-refresh_available_sources = refresh_source_inventory
-uploaded_file_path = resolve_uploaded_temp_path
-upload_sources = save_uploaded_sources
-delete_uploaded_source = delete_uploaded_source_file
-rebuild_vector_db_for_chat = rebuild_vector_store_for_chat
-rebuild_vector_db_for_sources = rebuild_vector_store_for_sources
-answer_question = answer_user_question
-chat_submit = submit_chat_message
-clear_chat = reset_chat_session
+build_source_inventory_rows = source_rows
+available_source_rows = source_rows
+refresh_uploaded_source_dropdown = source_choices
+uploaded_source_dropdown_update = source_choices
+refresh_source_inventory = refresh_sources
+refresh_available_sources = refresh_sources
+resolve_uploaded_temp_path = upload_path
+uploaded_file_path = upload_path
+save_uploaded_sources = save_sources
+upload_sources = save_sources
+delete_uploaded_source_file = delete_source
+delete_uploaded_source = delete_source
+rebuild_vector_store_for_chat = rebuild_chat
+rebuild_vector_db_for_chat = rebuild_chat
+rebuild_vector_store_for_sources = rebuild_sources
+rebuild_vector_db_for_sources = rebuild_sources
+answer_user_question = ask_question
+answer_question = ask_question
+chat_submit = submit_message
+submit_chat_message = submit_message
+clear_chat = reset_chat
+reset_chat_session = reset_chat

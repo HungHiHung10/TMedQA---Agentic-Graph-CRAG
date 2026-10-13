@@ -6,7 +6,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 BASE_DIR = PROJECT_ROOT
 
 
-def _load_dotenv_file(path: Path) -> None:
+def _load_dotenv(path: Path) -> None:
     if not path.exists():
         return
 
@@ -29,7 +29,7 @@ def _data_file(pattern: str) -> str:
     return str(DATA_DIR / pattern.replace("*", ""))
 
 
-_load_dotenv_file(BASE_DIR / ".env")
+_load_dotenv(BASE_DIR / ".env")
 
 # --- MODEL CONFIG ---
 EMBEDDING_MODEL_NAME = os.getenv("EMBEDDING_MODEL_NAME", "BAAI/bge-m3")
@@ -72,6 +72,11 @@ LLM_API_PROVIDERS = {
         "model_env": "OPENAI_MODEL",
         "base_url": None,
     },
+    "gemini": {
+        "api_key_env": "GEMINI_API_KEY",
+        "model_env": "GEMINI_MODEL",
+        "base_url": "https://generativelanguage.googleapis.com/v1beta/openai/",
+    },
 }
 
 # --- PATHS ---
@@ -91,6 +96,6 @@ FILES = {
 # --- PARAMETERS ---
 CHUNK_SIZE = 1000
 CHUNK_OVERLAP = 200
-RETRIEVAL_K = 5
+RETRIEVAL_K = int(os.getenv("RETRIEVAL_K", "3"))
 SIMILARITY_THRESHOLD = 0.3
 HYBRID_SCORE_THRESHOLD = 0.5

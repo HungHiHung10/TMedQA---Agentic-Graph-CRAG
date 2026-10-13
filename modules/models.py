@@ -44,7 +44,7 @@ class HashingEmbeddingBackend:
         return self._embed(text)
 
 
-def load_embedding_backend():
+def load_embeddings():
     if os.getenv("EMBEDDING_BACKEND", "huggingface").strip().lower() == "hashing":
         print("[INIT] Using offline hashing embeddings.")
         return HashingEmbeddingBackend()
@@ -72,7 +72,7 @@ def load_embedding_backend():
         return HashingEmbeddingBackend()
 
 
-def _resolve_provider_chain() -> List[str]:
+def _providers() -> List[str]:
     providers = [LLM_PROVIDER] + LLM_PROVIDER_CHAIN
     if LLM_FALLBACK_PROVIDER:
         providers.append(LLM_FALLBACK_PROVIDER)
@@ -85,7 +85,7 @@ def _resolve_provider_chain() -> List[str]:
     return chain
 
 
-def _resolve_provider_model_name(provider: str) -> str:
+def _model_name(provider: str) -> str:
     if provider not in LLM_API_PROVIDERS:
         raise ValueError(f"Unsupported LLM provider '{provider}'.")
 
@@ -103,7 +103,7 @@ def _resolve_provider_model_name(provider: str) -> str:
         f"Missing model config for LLM provider '{provider}'. "
         f"Set {provider_cfg['model_env']} in .env."
     )
-def _create_api_chat_model(provider: str, max_tokens: int):
+def _chat_model(provider: str, max_tokens: int, model_override: str = None):
     try:
         from langchain_openai import ChatOpenAI
     except ImportError as exc:
@@ -118,13 +118,14 @@ def _create_api_chat_model(provider: str, max_tokens: int):
         print(f"[WARNING] Skip provider '{provider}' because {provider_cfg['api_key_env']} is not set.")
         return None
 
+    model_to_use = model_override or _model_name(provider)
     kwargs = {
-        "model": _resolve_provider_model_name(provider),
+        "model": model_to_use,
         "api_key": api_key,
         "temperature": 0,
         "max_tokens": max_tokens,
-        "timeout": float(os.getenv("LLM_TIMEOUT_SECONDS", "6")),
-        "max_retries": int(os.getenv("LLM_MAX_RETRIES", "0")),
+        "timeout": float(os.getenv("LLM_TIMEOUT_SECONDS", "25")),
+        "max_retries": int(os.getenv("LLM_MAX_RETRIES", "2")),
     }
 
     if provider_cfg["base_url"]:
@@ -139,22 +140,28 @@ def _create_api_chat_model(provider: str, max_tokens: int):
     return ChatOpenAI(**kwargs)
 
 
-def _load_api_chat_backend(max_tokens: int, purpose: str):
+def _api_llm(max_tokens: int, purpose: str):
     configured_models: List[Tuple[str, str, object]] = []
-    for provider in _resolve_provider_chain():
+    for provider in _providers():
         try:
-            model_name = _resolve_provider_model_name(provider)
-            model = _create_api_chat_model(provider, max_tokens=max_tokens)
+            model_name = _model_name(provider)
+            model = _chat_model(provider, max_tokens=max_tokens)
+            if model is not None:
+                configured_models.append((provider, model_name, model))
+
+            # Load provider-specific fallback model (e.g. GROQ_FALLBACK_MODEL)
+            fallback_var = f"{provider.upper()}_FALLBACK_MODEL"
+            fallback_model = os.getenv(fallback_var, "").strip()
+            if fallback_model and fallback_model != model_name:
+                fb_inst = _chat_model(provider, max_tokens=max_tokens, model_override=fallback_model)
+                if fb_inst is not None:
+                    configured_models.append((f"{provider}-fallback", fallback_model, fb_inst))
         except Exception as exc:
             print(f"[WARNING] Skip provider '{provider}': {exc}")
             continue
 
-        if model is None:
-            continue
-        configured_models.append((provider, model_name, model))
-
     if not configured_models:
-        providers = ", ".join(_resolve_provider_chain()) or "<empty>"
+        providers = ", ".join(_providers()) or "<empty>"
         raise RuntimeError(f"No usable API LLM providers configured. Checked: {providers}")
 
     provider_summary = ", ".join(f"{provider}:{model}" for provider, model, _ in configured_models)
@@ -163,14 +170,17 @@ def _load_api_chat_backend(max_tokens: int, purpose: str):
     primary = configured_models[0][2]
     fallbacks = [model for _, _, model in configured_models[1:]]
     return primary.with_fallbacks(fallbacks) if fallbacks else primary
-def load_generation_model():
-    return _load_api_chat_backend(max_tokens=2048, purpose="generation")
+def load_llm():
+    return _api_llm(max_tokens=2048, purpose="generation")
 
 
-def load_evaluation_model():
-    return _load_api_chat_backend(max_tokens=256, purpose="judge")
+def load_judge():
+    return _api_llm(max_tokens=256, purpose="judge")
 # Backward-compatible names for older imports.
 HashingEmbeddings = HashingEmbeddingBackend
-load_embedding_model = load_embedding_backend
-load_llm_model = load_generation_model
-load_judge_model = load_evaluation_model
+load_embedding_backend = load_embeddings
+load_embedding_model = load_embeddings
+load_generation_model = load_llm
+load_llm_model = load_llm
+load_evaluation_model = load_judge
+load_judge_model = load_judge

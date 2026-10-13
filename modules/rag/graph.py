@@ -10,7 +10,7 @@ from langchain_core.documents import Document
 from langgraph.graph import END, StateGraph
 
 from modules.settings import HYBRID_SCORE_THRESHOLD
-from modules.rag.chains import score_with_cross_encoder
+from modules.rag.chains import rerank_score
 from modules.text_utils import clean_mojibake_label, friendly_source_name
 
 
@@ -32,12 +32,13 @@ class CRAGWorkflow:
             "1", "true", "yes", "on"
         }
 
-    def retrieve_documents(self, state):
+    def retrieve_docs(self, state):
+        self.llm_failed = False
         print("\n[PROCESS] RETRIEVAL")
         docs = self.retriever.invoke(state["question"])
         return {"documents": docs, "question": state["question"]}
 
-    def grade_retrieved_documents(self, state):
+    def grade_docs(self, state):
         print("[PROCESS] HYBRID GRADING")
         question = state["question"]
         documents = state["documents"]
@@ -60,11 +61,11 @@ class CRAGWorkflow:
                 llm_val = str(llm_res.get("binary_score", "no")).strip().lower()
                 llm_norm = 1.0 if llm_val == "yes" else 0.0
 
-                rerank_score = score_with_cross_encoder(question, doc.page_content)
-                if rerank_score is None:
+                cross_score = rerank_score(question, doc.page_content)
+                if cross_score is None:
                     final_score = llm_norm
                 else:
-                    rerank_norm = 1 / (1 + np.exp(-rerank_score))
+                    rerank_norm = 1 / (1 + np.exp(-cross_score))
                     final_score = (rerank_norm * 0.6) + (llm_norm * 0.4)
 
                 if final_score >= HYBRID_SCORE_THRESHOLD:
@@ -80,7 +81,7 @@ class CRAGWorkflow:
 
         return {"documents": filtered_docs, "question": question, "web_search_needed": web_search}
 
-    def rewrite_search_query(self, state):
+    def rewrite_query(self, state):
         print("[PROCESS] REWRITE QUERY")
         try:
             if self.llm_failed:
@@ -92,7 +93,7 @@ class CRAGWorkflow:
             new_q = state["question"]
         return {"documents": state["documents"], "question": new_q}
 
-    def augment_with_web_search(self, state):
+    def web_search(self, state):
         print("[PROCESS] WEB SEARCH (DuckDuckGo)")
         question = state["question"]
         documents = state.get("documents", []) or []
@@ -130,7 +131,7 @@ class CRAGWorkflow:
         return re.sub(r"\s+", " ", text).strip()
 
     @classmethod
-    def _extract_question_focus(cls, question):
+    def _focus(cls, question):
         clean = re.sub(r"answer\s+in\s+english\s+only\.?", " ", question or "", flags=re.I).strip()
         normalized = cls._normalize(clean)
         match = re.search(r"(.+?)\s+(?:la\s+gi|nghia\s+la\s+gi)\??$", normalized, flags=re.I)
@@ -149,7 +150,7 @@ class CRAGWorkflow:
         return " ".join(tokens[:3]).strip() or clean
 
     @classmethod
-    def _extract_relevant_excerpt(cls, text, focus):
+    def _excerpt(cls, text, focus):
         compact = " ".join((text or "").split())
         normalized_text = cls._normalize(compact)
         normalized_focus = cls._normalize(focus)
@@ -167,7 +168,7 @@ class CRAGWorkflow:
         return excerpt
 
     @classmethod
-    def _format_source_label(cls, doc, index):
+    def _source_label(cls, doc, index):
         metadata = getattr(doc, "metadata", {}) or {}
         source = friendly_source_name(
             metadata.get("source") or metadata.get("title") or metadata.get("disease") or "unknown source"
@@ -179,20 +180,20 @@ class CRAGWorkflow:
         return label
 
     @classmethod
-    def _build_retrieval_fallback_answer(cls, question, documents):
+    def _fallback_answer(cls, question, documents):
         if not documents:
             return (
                 "LLM API \u0111ang l\u1ed7i v\u00e0 h\u1ec7 th\u1ed1ng ch\u01b0a t\u00ecm \u0111\u01b0\u1ee3c "
                 "ng\u1eef c\u1ea3nh li\u00ean quan trong t\u00e0i li\u1ec7u."
             )
 
-        focus = cls._extract_question_focus(question)
+        focus = cls._focus(question)
         excerpts = []
         for index, doc in enumerate(documents[:3], start=1):
             text = doc.page_content or ""
-            excerpt = cls._extract_relevant_excerpt(text, focus)
+            excerpt = cls._excerpt(text, focus)
             if excerpt:
-                excerpts.append(f"- {cls._format_source_label(doc, index)}\n  {excerpt}")
+                excerpts.append(f"- {cls._source_label(doc, index)}\n  {excerpt}")
 
         if not excerpts:
             return (
@@ -214,7 +215,7 @@ class CRAGWorkflow:
 
         return lead + "\n\n".join(excerpts)
 
-    def generate_grounded_answer(self, state):
+    def generate_answer(self, state):
         print("[PROCESS] GENERATE")
         try:
             if self.llm_failed:
@@ -223,40 +224,44 @@ class CRAGWorkflow:
         except Exception as exc:
             print(f"[WARNING] Generation failed, returning retrieval fallback: {exc}")
             self.llm_failed = True
-            gen = self._build_retrieval_fallback_answer(state["question"], state["documents"])
+            gen = self._fallback_answer(state["question"], state["documents"])
         return {"generation": gen, "documents": state["documents"]}
 
-    def route_after_grading(self, state):
+    def route(self, state):
         if state["web_search_needed"] == "Yes":
-            return "rewrite_search_query"
-        return "generate_grounded_answer"
+            return "rewrite_query"
+        return "generate_answer"
 
-    def compile_workflow(self):
+    def compile(self):
         workflow = StateGraph(GraphState)
-        workflow.add_node("retrieve_documents", self.retrieve_documents)
-        workflow.add_node("grade_retrieved_documents", self.grade_retrieved_documents)
-        workflow.add_node("rewrite_search_query", self.rewrite_search_query)
-        workflow.add_node("augment_with_web_search", self.augment_with_web_search)
-        workflow.add_node("generate_grounded_answer", self.generate_grounded_answer)
+        workflow.add_node("retrieve_docs", self.retrieve_docs)
+        workflow.add_node("grade_docs", self.grade_docs)
+        workflow.add_node("rewrite_query", self.rewrite_query)
+        workflow.add_node("web_search", self.web_search)
+        workflow.add_node("generate_answer", self.generate_answer)
 
-        workflow.set_entry_point("retrieve_documents")
-        workflow.add_edge("retrieve_documents", "grade_retrieved_documents")
+        workflow.set_entry_point("retrieve_docs")
+        workflow.add_edge("retrieve_docs", "grade_docs")
         workflow.add_conditional_edges(
-            "grade_retrieved_documents",
-            self.route_after_grading,
-            {"rewrite_search_query": "rewrite_search_query", "generate_grounded_answer": "generate_grounded_answer"},
+            "grade_docs",
+            self.route,
+            {"rewrite_query": "rewrite_query", "generate_answer": "generate_answer"},
         )
-        workflow.add_edge("rewrite_search_query", "augment_with_web_search")
-        workflow.add_edge("augment_with_web_search", "generate_grounded_answer")
-        workflow.add_edge("generate_grounded_answer", END)
+        workflow.add_edge("rewrite_query", "web_search")
+        workflow.add_edge("web_search", "generate_answer")
+        workflow.add_edge("generate_answer", END)
 
         return workflow.compile()
 
     # Backward-compatible method names for older code paths.
-    retrieve = retrieve_documents
-    grade_documents_hybrid = grade_retrieved_documents
-    rewrite_query = rewrite_search_query
-    web_search = augment_with_web_search
-    generate_answer = generate_grounded_answer
-    decide_to_generate = route_after_grading
-    build = compile_workflow
+    retrieve = retrieve_docs
+    retrieve_documents = retrieve_docs
+    grade_documents_hybrid = grade_docs
+    grade_retrieved_documents = grade_docs
+    rewrite_search_query = rewrite_query
+    augment_with_web_search = web_search
+    generate_grounded_answer = generate_answer
+    decide_to_generate = route
+    route_after_grading = route
+    build = compile
+    compile_workflow = compile

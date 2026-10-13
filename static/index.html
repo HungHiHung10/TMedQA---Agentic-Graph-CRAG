@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TMed-QA | Hệ Thống Trợ Lý Tra Cứu Y Khoa Agentic CRAG</title>
+    <meta name="description" content="TMed-QA - Hệ thống trợ lý hỏi đáp và tra cứu y khoa chính xác cao ứng dụng đồ thị Corrective RAG (CRAG)">
+    <meta name="theme-color" content="#1a73e8">
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="logo/TMed-QA.png">
+
+    <!-- Stylesheet -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body data-theme="light">
+    <!-- Main App Container -->
+    <div class="app-layout">
+        
+        <!-- Header Section -->
+        <header class="app-header" id="app-header">
+            <div class="header-inner">
+                <div class="brand-group">
+                    <div class="logo-box">
+                        <img src="logo/TMed-QA.png" alt="TMed-QA Logo" class="brand-logo" width="40" height="40" onerror="this.src='/static/logo/TMed-QA.png'">
+                    </div>
+                    <!-- <div class="brand-info">
+                        <div class="brand-title-row">
+                            <h1 class="brand-name">TMed-QA</h1>
+                            <span class="badge-crag">Agentic CRAG</span>
+                            <span class="badge-version">v2.0</span>
+                        </div>
+                        <p class="brand-tagline">Trợ lý Hỏi đáp Y học Cổ truyền & Y học Hiện đại với Minh chứng Chính xác</p>
+                    </div> -->
+                </div>
+
+                <div class="header-actions">
+                    <div class="status-indicator" id="system-status-indicator">
+                        <span class="status-dot"></span>
+                        <span class="status-label" id="status-text">Active</span>
+                    </div>
+
+                    <button class="icon-btn theme-toggle" id="theme-toggle-btn" title="Chuyển đổi giao diện Sáng / Tối">
+                        <svg class="sun-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="5"></circle>
+                            <line x1="12" y1="1" x2="12" y2="3"></line>
+                            <line x1="12" y1="21" x2="12" y2="23"></line>
+                            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                            <line x1="1" y1="12" x2="3" y2="12"></line>
+                            <line x1="21" y1="12" x2="23" y2="12"></line>
+                            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                        </svg>
+                        <svg class="moon-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Tab Navigation Bar -->
+            <nav class="nav-tabs" role="tablist">
+                <button class="nav-tab active" data-tab="tab-chat" id="tab-btn-chat">
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                    </svg>
+                    <span>Trò Chuyện Y Khoa</span>
+                </button>
+                <button class="nav-tab" data-tab="tab-sources" id="tab-btn-sources">
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                        <polyline points="14 2 14 8 20 8"></polyline>
+                        <line x1="16" y1="13" x2="8" y2="13"></line>
+                        <line x1="16" y1="17" x2="8" y2="17"></line>
+                        <polyline points="10 9 9 9 8 9"></polyline>
+                    </svg>
+                    <span>Kho Dữ Liệu & Nguồn</span>
+                    <span class="source-count-badge" id="source-badge-count">0</span>
+                </button>
+                <!-- Tab Kiến Trúc Agentic CRAG (Đã ẩn theo yêu cầu)
+                <button class="nav-tab" data-tab="tab-architecture" id="tab-btn-arch">
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="2" y="2" width="20" height="8" rx="2" ry="2"></rect>
+                        <rect x="2" y="14" width="20" height="8" rx="2" ry="2"></rect>
+                        <line x1="6" y1="6" x2="6.01" y2="6"></line>
+                        <line x1="6" y1="18" x2="6.01" y2="18"></line>
+                    </svg>
+                    <span>Kiến Trúc Agentic CRAG</span>
+                </button>
+                -->
+            </nav>
+        </header>
+
+        <!-- Main Workspace Area -->
+        <main class="main-content">
+
+            <!-- TAB 1: MEDICAL CHAT -->
+            <section class="tab-pane active" id="tab-chat">
+                <div class="chat-workspace">
+                    
+                    <!-- Chat Conversation Area (Left/Center) -->
+                    <div class="chat-column">
+                        <div class="chat-container" id="chat-messages-container">
+                            
+                            <!-- Welcome Intro Banner (Đã tạm thời comment theo yêu cầu)
+[comment: Welcome Intro Banner ]
+                            <div class="welcome-card" id="welcome-card">
+                                <div class="welcome-header">
+                                    <div class="welcome-logo-wrap">
+                                        <img src="logo/TMed-QA.png" alt="TMed-QA" class="welcome-logo" onerror="this.src='/static/logo/TMed-QA.png'">
+                                    </div>
+                                    <div class="welcome-title-wrap">
+                                        <h2>Chào mừng bạn đến với TMed-QA</h2>
+                                        <p>Hệ thống AI y khoa tích hợp quy trình đồ thị tự kiểm chứng (Corrective RAG) từ tài liệu Nội khoa, Nhi khoa Y học Cổ truyền và cơ sở tri thức lâm sàng.</p>
+                                    </div>
+                                </div>
+
+                                <div class="welcome-features">
+                                    <div class="feat-item">
+                                        <div class="feat-icon">📚</div>
+                                        <div>
+                                            <strong>Tri thức YHCT chuẩn hóa</strong>
+                                            <p>Truy xuất chính xác từ giáo trình Nội khoa, Bệnh Ngũ quan & Nhi khoa YHCT.</p>
+                                        </div>
+                                    </div>
+                                    <div class="feat-item">
+                                        <div class="feat-icon">🛡️</div>
+                                        <div>
+                                            <strong>Agentic Grader & Rewrite</strong>
+                                            <p>Tự động đánh giá độ phù hợp của tài liệu và tối ưu hóa câu hỏi tìm kiếm.</p>
+                                        </div>
+                                    </div>
+                                    <div class="feat-item">
+                                        <div class="feat-icon">📑</div>
+                                        <div>
+                                            <strong>Minh chứng đối chiếu</strong>
+                                            <p>Trích dẫn rõ nguồn, chương mục và nội dung bằng chứng đi kèm.</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                [comment: Quick Suggestion Questions ]
+                                <div class="suggestions-section">
+                                    <span class="suggestions-label">Gợi ý câu hỏi phổ biến:</span>
+                                    <div class="suggestions-chips">
+                                        <button class="chip-btn" data-query="Liệt dương là gì? Nguyên nhân và cách điều trị theo Y học cổ truyền?">
+                                            💡 Liệt dương là gì?
+                                        </button>
+                                        <button class="chip-btn" data-query="Triệu chứng và cách điều trị bệnh Trúng thử?">
+                                            💡 Bệnh Trúng thử
+                                        </button>
+                                        <button class="chip-btn" data-query="Các thể bệnh và bài thuốc chữa Hen phế quản theo Đông y?">
+                                            💡 Hen phế quản YHCT
+                                        </button>
+                                        <button class="chip-btn" data-query="Đặc điểm sinh lý và bệnh lý trẻ em trong Nhi khoa Y học cổ truyền?">
+                                            💡 Nhi khoa YHCT
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            -->
+                            <!-- Minimalist Centered Hero (tự động ẩn khi có tin nhắn) -->
+                            <div class="empty-chat-hero" id="empty-chat-hero">
+                                <div class="hero-icon-wrap">
+                                    <img src="logo/TMed-QA.png" alt="TMed" class="hero-logo" onerror="this.src='/static/logo/TMed-QA.png'">
+                                </div>
+                                <h3 class="hero-title">Trợ lý Hỏi đáp Y học Cổ truyền</h3>
+                                <p class="hero-subtitle">Tra cứu bệnh chứng, pháp trị và bài thuốc với minh chứng trích dẫn chuẩn hóa từ giáo trình YHCT.</p>
+                                <div class="hero-chips">
+                                    <button class="hero-chip-btn" data-query="Liệt dương là gì? Nguyên nhân và cách điều trị theo Y học cổ truyền?">
+                                        Liệt dương là gì?
+                                    </button>
+                                    <button class="hero-chip-btn" data-query="Triệu chứng và cách điều trị bệnh Trúng thử?">
+                                        Bệnh Trúng thử
+                                    </button>
+                                    <button class="hero-chip-btn" data-query="Các thể bệnh và bài thuốc chữa Hen phế quản theo Đông y?">
+                                        Hen phế quản YHCT
+                                    </button>
+                                    <button class="hero-chip-btn" data-query="Đặc điểm sinh lý và bệnh lý trẻ em trong Nhi khoa Y học cổ truyền?">
+                                        Nhi khoa YHCT
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Dynamic Chat Message Bubbles will be injected here -->
+                            <div class="messages-list" id="messages-list"></div>
+
+                            <!-- Thinking Indicator -->
+                            <div class="thinking-bubble" id="thinking-bubble" style="display: none;">
+                                <div class="bot-avatar">
+                                    <img src="logo/TMed-QA.png" alt="TMed" onerror="this.src='/static/logo/TMed-QA.png'">
+                                </div>
+                                <div class="thinking-content">
+                                    <div class="pulse-indicator">
+                                        <span></span><span></span><span></span>
+                                    </div>
+                                    <span class="thinking-text" id="thinking-status-text">Đang truy vấn đồ thị CRAG và đối chiếu minh chứng y khoa...</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Chat Input Composer -->
+                        <div class="composer-container">
+                            <div class="composer-actions-top">
+                                <span class="composer-hint">Mẹo: Nhập câu hỏi rõ ràng về triệu chứng, phép trị, hoặc bài thuốc để đạt độ chính xác cao nhất.</span>
+                                <div class="composer-quick-btns">
+                                    <button class="text-action-btn" id="btn-clear-chat" title="Xóa lịch sử trò chuyện">
+                                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+                                            <polyline points="3 6 5 6 21 6"></polyline>
+                                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                                        </svg>
+                                        <span>Xóa chat</span>
+                                    </button>
+                                    <button class="text-action-btn" id="btn-rebuild-quick" title="Tái lập Vector Store">
+                                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+                                            <polyline points="23 4 23 10 17 10"></polyline>
+                                            <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+                                        </svg>
+                                        <span>Rebuild Index</span>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <form class="composer-form" id="chat-form">
+                                <div class="textarea-wrap">
+                                    <textarea 
+                                        id="chat-input" 
+                                        rows="1" 
+                                        placeholder="Hỏi về bệnh lý, triệu chứng, phép trị, bài thuốc Y học cổ truyền..."
+                                        autocomplete="off"
+                                    ></textarea>
+                                </div>
+                                <button type="submit" class="send-btn" id="send-button" title="Gửi câu hỏi (Enter)">
+                                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+                                        <line x1="22" y1="2" x2="11" y2="13"></line>
+                                        <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                                    </svg>
+                                </button>
+                            </form>
+                            <div class="composer-footnote">
+                                <span>Nhấn <strong>Enter</strong> để gửi, <strong>Shift + Enter</strong> để xuống dòng</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Evidence & Source Inspector Drawer (Right Side) -->
+                    <aside class="evidence-panel" id="evidence-panel">
+                        <div class="panel-header">
+                            <div class="panel-title-wrap">
+                                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line>
+                                </svg>
+                                <h3>Minh Chứng Truy Xuất</h3>
+                            </div>
+                            <span class="evidence-count-badge" id="evidence-count">0 tài liệu</span>
+                        </div>
+
+                        <div class="panel-summary" id="panel-summary-bar">
+                            <span id="evidence-timing-text">Chưa có truy vấn</span>
+                        </div>
+
+                        <div class="evidence-list" id="evidence-list">
+                            <div class="empty-evidence" id="empty-evidence-placeholder">
+                                <div class="empty-icon">
+                                    <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+                                        <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+                                    </svg>
+                                </div>
+                                <p>Khi bạn gửi câu hỏi, các đoạn trích dẫn và tài liệu được thuật toán CRAG chọn lọc sẽ hiển thị tại đây.</p>
+                            </div>
+                        </div>
+                    </aside>
+
+                </div>
+            </section>
+
+            <!-- TAB 2: KNOWLEDGE BASE & SOURCE MANAGEMENT -->
+            <section class="tab-pane" id="tab-sources">
+                <div class="sources-workspace">
+                    
+                    <!-- Top Upload & Manage Controls -->
+                    <div class="sources-grid-top">
+                        <!-- Upload Card -->
+                        <div class="card-box upload-card">
+                            <div class="card-box-header">
+                                <div class="card-title-group">
+                                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                        <polyline points="17 8 12 3 7 8"></polyline>
+                                        <line x1="12" y1="3" x2="12" y2="15"></line>
+                                    </svg>
+                                    <h4>Thêm Tài Liệu Mới</h4>
+                                </div>
+                                <span class="format-pill">Hỗ trợ .docx, .txt, .md</span>
+                            </div>
+
+                            <div class="drop-zone" id="file-drop-zone">
+                                <input type="file" id="file-input" multiple accept=".docx,.txt,.md" style="display: none;">
+                                <div class="drop-zone-content">
+                                    <div class="drop-icon">
+                                        <svg viewBox="0 0 24 24" width="38" height="38" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+                                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                            <polyline points="17 8 12 3 7 8"></polyline>
+                                            <line x1="12" y1="3" x2="12" y2="15"></line>
+                                        </svg>
+                                    </div>
+                                    <p class="drop-main-text">Kéo thả tài liệu vào đây, hoặc <span class="browse-link" id="browse-files-link">chọn từ máy tính</span></p>
+                                    <span class="drop-sub-text">Hệ thống sẽ tự động băm nhỏ (chunking) và tích hợp vào đồ thị tra cứu</span>
+                                </div>
+                            </div>
+
+                            <!-- Selected files preview list -->
+                            <div class="staged-files-list" id="staged-files-list" style="display: none;">
+                                <div class="staged-header">Các tệp đã chọn:</div>
+                                <div class="staged-items" id="staged-items"></div>
+                            </div>
+
+                            <div class="card-actions-row">
+                                <button class="btn btn-primary" id="btn-upload-submit" disabled>
+                                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                        <polyline points="17 8 12 3 7 8"></polyline>
+                                        <line x1="12" y1="3" x2="12" y2="15"></line>
+                                    </svg>
+                                    <span>Tải lên & Nạp vào Vector Store</span>
+                                </button>
+                                <span class="upload-status-msg" id="upload-status-msg"></span>
+                            </div>
+                        </div>
+
+                        <!-- Management & Maintenance Card -->
+                        <div class="card-box manage-card">
+                            <div class="card-box-header">
+                                <div class="card-title-group">
+                                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+                                        <circle cx="12" cy="12" r="3"></circle>
+                                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                                    </svg>
+                                    <h4>Thao Tác Kho Tri Thức</h4>
+                                </div>
+                            </div>
+
+                            <div class="manage-section">
+                                <label class="input-label" for="delete-source-select">Quản lý tệp người dùng tải lên:</label>
+                                <div class="delete-action-row">
+                                    <select class="styled-select" id="delete-source-select">
+                                        <option value="">-- Chọn tệp muốn xóa --</option>
+                                    </select>
+                                    <button class="btn btn-danger" id="btn-delete-source">
+                                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                                            <polyline points="3 6 5 6 21 6"></polyline>
+                                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                                        </svg>
+                                        <span>Xóa tệp</span>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="rebuild-section">
+                                <p class="section-desc">Khi bạn bổ sung hoặc xóa tài liệu, hãy thực hiện tái tạo chỉ mục vector để làm mới cơ sở tri thức.</p>
+                                <div class="btn-group">
+                                    <button class="btn btn-secondary" id="btn-refresh-sources">
+                                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"></path>
+                                        </svg>
+                                        <span>Làm mới danh sách</span>
+                                    </button>
+                                    <button class="btn btn-primary" id="btn-rebuild-full">
+                                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                                            <polyline points="23 4 23 10 17 10"></polyline>
+                                            <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+                                        </svg>
+                                        <span>Tái lập toàn diện Vector DB</span>
+                                    </button>
+                                </div>
+                                <div class="rebuild-status-msg" id="rebuild-status-msg"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Inventory Table -->
+                    <div class="card-box table-card">
+                        <div class="card-box-header">
+                            <div class="card-title-group">
+                                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+                                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                                    <line x1="3" y1="9" x2="21" y2="9"></line>
+                                    <line x1="9" y1="21" x2="9" y2="9"></line>
+                                </svg>
+                                <h4>Danh Mục Các Nguồn Tri Thức Đang Hoạt Động</h4>
+                            </div>
+                            <div class="search-input-wrap">
+                                <input type="text" id="source-search-input" placeholder="Tìm kiếm nguồn dữ liệu..." class="search-box">
+                            </div>
+                        </div>
+
+                        <div class="table-responsive">
+                            <table class="sources-table" id="sources-table">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 50px;">#</th>
+                                        <th style="width: 140px;">Loại nguồn</th>
+                                        <th>Tên tài liệu</th>
+                                        <th style="width: 130px;">Trạng thái</th>
+                                        <th>Đường dẫn tệp tin</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="sources-table-body">
+                                    <tr>
+                                        <td colspan="5" class="table-loading">Đang tải danh mục nguồn dữ liệu...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                </div>
+            </section>
+
+            <!-- TAB 3: AGENTIC CRAG ARCHITECTURE (Đã tạm thời comment theo yêu cầu)
+[comment: TAB 3: AGENTIC CRAG ARCHITECTURE ]
+            <section class="tab-pane" id="tab-architecture">
+                <div class="arch-workspace">
+                    
+                    [comment: Architecture Overview Card ]
+                    <div class="card-box arch-diagram-card">
+                        <div class="card-box-header">
+                            <div class="card-title-group">
+                                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="18" cy="5" r="3"></circle>
+                                    <circle cx="6" cy="12" r="3"></circle>
+                                    <circle cx="18" cy="19" r="3"></circle>
+                                    <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
+                                    <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
+                                </svg>
+                                <h4>Quy Trình Đồ Thị Agentic Corrective RAG (CRAG)</h4>
+                            </div>
+                            <span class="badge-crag">LangGraph Workflow</span>
+                        </div>
+
+                        [comment: Workflow Visual Flowchart ]
+                        <div class="workflow-flowchart">
+                            <div class="flow-step">
+                                <div class="step-badge">1. Input</div>
+                                <div class="step-card">
+                                    <div class="step-icon">💬</div>
+                                    <div class="step-name">User Query</div>
+                                    <p>Câu hỏi y khoa từ người dùng về bệnh lý, bài thuốc hoặc triệu chứng.</p>
+                                </div>
+                            </div>
+
+                            <div class="flow-arrow">➔</div>
+
+                            <div class="flow-step">
+                                <div class="step-badge">2. Retrieval</div>
+                                <div class="step-card">
+                                    <div class="step-icon">🔍</div>
+                                    <div class="step-name">Hybrid Retriever</div>
+                                    <p>Tìm kiếm tương đồng ngữ nghĩa kết hợp lọc điểm ngưỡng (Threshold k=3).</p>
+                                </div>
+                            </div>
+
+                            <div class="flow-arrow">➔</div>
+
+                            <div class="flow-step highlight-step">
+                                <div class="step-badge">3. Evaluation</div>
+                                <div class="step-card">
+                                    <div class="step-icon">⚖️</div>
+                                    <div class="step-name">Document Grader</div>
+                                    <p>Agent đánh giá mức độ tương quan thực sự của từng đoạn trích dẫn.</p>
+                                </div>
+                            </div>
+
+                            <div class="flow-arrow">➔</div>
+
+                            <div class="flow-step">
+                                <div class="step-badge">4. Correction</div>
+                                <div class="step-card">
+                                    <div class="step-icon">🔄</div>
+                                    <div class="step-name">Rewriter / Web Search</div>
+                                    <p>Viết lại câu hỏi truy vấn hoặc tìm kiếm bổ sung nếu tài liệu chưa đủ.</p>
+                                </div>
+                            </div>
+
+                            <div class="flow-arrow">➔</div>
+
+                            <div class="flow-step finish-step">
+                                <div class="step-badge">5. Generation</div>
+                                <div class="step-card">
+                                    <div class="step-icon">🩺</div>
+                                    <div class="step-name">Medical Generator</div>
+                                    <p>Tổng hợp câu trả lời y khoa chuẩn xác kèm trích dẫn số và khuyến cáo y tế.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="arch-description">
+                            <h5>Cơ chế hoạt động vượt trội:</h5>
+                            <p>Không giống như các hệ thống RAG thông thường (chỉ đơn giản là tìm kiếm rồi trả lời), kiến trúc <strong>CRAG (Corrective Retrieval-Augmented Generation)</strong> sử dụng các nút kiểm định (grader node) để thẩm định độ tin cậy của tài liệu. Khi tài liệu không đủ chuẩn xác, hệ thống tự động kích hoạt tiến trình viết lại truy vấn hoặc bổ sung thông tin từ các kênh mở rộng trước khi đưa vào mô hình sinh ngôn ngữ y học.</p>
+                        </div>
+                    </div>
+
+                    [comment: System Specs & Parameters ]
+                    <div class="specs-grid">
+                        <div class="card-box spec-box">
+                            <div class="spec-icon">🧠</div>
+                            <div class="spec-details">
+                                <span class="spec-label">Mô Hình Nhúng (Embeddings)</span>
+                                <strong class="spec-value" id="spec-embedding">BAAI/bge-m3</strong>
+                                <span class="spec-sub">Đa ngôn ngữ, độ dài ngữ cảnh lớn</span>
+                            </div>
+                        </div>
+
+                        <div class="card-box spec-box">
+                            <div class="spec-icon">⚡</div>
+                            <div class="spec-details">
+                                <span class="spec-label">LLM Provider & Model</span>
+                                <strong class="spec-value" id="spec-llm">OpenRouter / Gemini</strong>
+                                <span class="spec-sub">Hỗ trợ suy luận y khoa chính xác</span>
+                            </div>
+                        </div>
+
+                        <div class="card-box spec-box">
+                            <div class="spec-icon">🗄️</div>
+                            <div class="spec-details">
+                                <span class="spec-label">Cơ Sở Dữ Liệu Vector</span>
+                                <strong class="spec-value">ChromaDB</strong>
+                                <span class="spec-sub">Lưu trữ embedding cục bộ tốc độ cao</span>
+                            </div>
+                        </div>
+
+                        <div class="card-box spec-box">
+                            <div class="spec-icon">🎯</div>
+                            <div class="spec-details">
+                                <span class="spec-label">Retrieval Parameters</span>
+                                <strong class="spec-value" id="spec-params">Top-K = 3 | Thresh = 0.3</strong>
+                                <span class="spec-sub">Độ tương đồng tối ưu cho y khoa</span>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </section>
+            -->
+
+        </main>
+
+        <!-- Footer Bar -->
+        <footer class="app-footer">
+            <div class="footer-left">
+                <span>&copy; 2026 TMed-QA Medical AI Assistant</span>
+                <span class="footer-dot">&bull;</span>
+                <span>Phát triển trên nền tảng LangGraph & Corrective RAG</span>
+            </div>
+            <div class="footer-right">
+                <span class="medical-disclaimer-pill">Thông tin mang tính tham khảo y học, không thay thế chỉ định bác sĩ</span>
+            </div>
+        </footer>
+
+    </div>
+
+    <!-- Modal for Detailed Evidence View -->
+    <div class="modal-backdrop" id="evidence-modal" style="display: none;">
+        <div class="modal-dialog">
+            <div class="modal-header">
+                <div class="modal-title-wrap">
+                    <span class="badge-source-type" id="modal-source-type">Tài liệu</span>
+                    <h3 id="modal-source-title">Chi Tiết Minh Chứng</h3>
+                </div>
+                <button class="modal-close-btn" id="modal-close-btn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="modal-meta-row">
+                    <div class="meta-item">
+                        <span class="meta-label">Tiết mục / Chương:</span>
+                        <strong id="modal-section-title">-</strong>
+                    </div>
+                    <div class="meta-item">
+                        <span class="meta-label">Độ dài đoạn:</span>
+                        <strong id="modal-chars-count">0 ký tự</strong>
+                    </div>
+                </div>
+                <div class="modal-content-box">
+                    <pre id="modal-full-content"></pre>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="modal-copy-btn">
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                    </svg>
+                    <span>Sao chép nội dung</span>
+                </button>
+                <button class="btn btn-primary" id="modal-dismiss-btn">Đóng</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification Container -->
+    <div class="toast-container" id="toast-container"></div>
+
+    <!-- Scripts -->
+    <script src="app.js"></script>
+</body>
+</html>

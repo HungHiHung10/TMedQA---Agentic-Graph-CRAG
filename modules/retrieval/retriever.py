@@ -38,25 +38,25 @@ class HybridRetriever:
         self.embedding_model = embedding_model
         self.k = int(search_kwargs.get("k", 3))
         self.score_threshold = float(search_kwargs.get("score_threshold", -1.0))
-        self.normalized_documents = [self._compose_searchable_document_text(doc) for doc in documents]
+        self.normalized_documents = [self._doc_text(doc) for doc in documents]
 
     @staticmethod
-    def _dense_similarity(left, right):
+    def _similarity(left, right):
         return sum(a * b for a, b in zip(left, right))
 
     @staticmethod
-    def _normalize_search_text(text):
+    def _normalize(text):
         return normalize_for_search(text)
 
     @classmethod
-    def _extract_query_terms(cls, text):
-        normalized = cls._normalize_search_text(text)
+    def _tokens(cls, text):
+        normalized = cls._normalize(text)
         return [tok for tok in re.findall(r"\w+", normalized, flags=re.UNICODE) if tok not in cls.STOPWORDS]
 
     @classmethod
-    def _build_query_ngrams(cls, question):
+    def _ngrams(cls, question):
         question = re.sub(r"answer\s+in\s+english\s+only\.?,?", " ", question or "", flags=re.I)
-        tokens = cls._extract_query_terms(question)
+        tokens = cls._tokens(question)
         ngrams = []
         for i in range(len(tokens) - 1):
             ngrams.append(" ".join(tokens[i:i + 2]))
@@ -65,14 +65,14 @@ class HybridRetriever:
         return ngrams, tokens
 
     @classmethod
-    def _compose_searchable_document_text(cls, doc):
+    def _doc_text(cls, doc):
         metadata = getattr(doc, "metadata", {}) or {}
         metadata_text = " ".join(str(value) for value in metadata.values())
-        return cls._normalize_search_text(f"{metadata_text}\n{getattr(doc, 'page_content', '')}")
+        return cls._normalize(f"{metadata_text}\n{getattr(doc, 'page_content', '')}")
 
     @classmethod
-    def _extract_definition_focus(cls, question):
-        normalized = cls._normalize_search_text(
+    def _definition_focus(cls, question):
+        normalized = cls._normalize(
             re.sub(r"answer\s+in\s+english\s+only\.?,?", " ", question or "", flags=re.I)
         )
         normalized = normalized.strip(" ?:;,.\n\t")
@@ -87,8 +87,8 @@ class HybridRetriever:
         return " ".join(tokens)
 
     @classmethod
-    def _score_definition_match(cls, question, normalized_doc):
-        focus = cls._extract_definition_focus(question)
+    def _definition_score(cls, question, normalized_doc):
+        focus = cls._definition_focus(question)
         if not focus:
             return 0.0
 
@@ -107,12 +107,12 @@ class HybridRetriever:
         return score
 
     @classmethod
-    def _score_lexical_relevance(cls, question, normalized_doc):
-        ngrams, tokens = cls._build_query_ngrams(question)
+    def _lexical_score(cls, question, normalized_doc):
+        ngrams, tokens = cls._ngrams(question)
         if not tokens:
             return 0.0
 
-        score = cls._score_definition_match(question, normalized_doc)
+        score = cls._definition_score(question, normalized_doc)
         for phrase in ngrams:
             if phrase in normalized_doc:
                 score += 35.0
@@ -130,11 +130,11 @@ class HybridRetriever:
         return score
 
     @staticmethod
-    def _document_source_id(doc):
+    def _source_id(doc):
         metadata = getattr(doc, "metadata", {}) or {}
         return str(metadata.get("source") or metadata.get("title") or "<unknown>")
 
-    def _select_diverse_sources(self, scored_items):
+    def _select_sources(self, scored_items):
         if os.getenv("DIVERSIFY_SOURCES", "true").strip().lower() not in {"1", "true", "yes", "on"}:
             return [doc for *_, doc in scored_items[: self.k]]
 
@@ -147,7 +147,7 @@ class HybridRetriever:
 
         for item in diversity_pool:
             doc = item[-1]
-            source_id = self._document_source_id(doc)
+            source_id = self._source_id(doc)
             if source_id in selected_ids:
                 continue
             selected.append(doc)
@@ -169,20 +169,20 @@ class HybridRetriever:
         query_embedding = self.embedding_model.embed_query(question)
         scored = []
         for embedding, doc, normalized_doc in zip(self.embeddings, self.documents, self.normalized_documents):
-            dense_score = self._dense_similarity(query_embedding, embedding)
-            lexical_score = self._score_lexical_relevance(question, normalized_doc)
+            dense_score = self._similarity(query_embedding, embedding)
+            lexical_score = self._lexical_score(question, normalized_doc)
             total_score = (lexical_score * 10.0) + dense_score
             scored.append((total_score, lexical_score, dense_score, doc))
 
         scored.sort(key=lambda item: item[0], reverse=True)
         lexical_hits = [item for item in scored if item[1] > 0]
         if lexical_hits:
-            return self._select_diverse_sources(lexical_hits)
+            return self._select_sources(lexical_hits)
 
         filtered = [item for item in scored if item[0] >= self.score_threshold]
         if not filtered:
             filtered = scored[: self.k]
-        return self._select_diverse_sources(filtered)
+        return self._select_sources(filtered)
 
 
 # Backward-compatible names for older notebooks/imports.
